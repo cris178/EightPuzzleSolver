@@ -81,23 +81,39 @@ bool Node::isGoal()
         {1, 2, 3},
         {4, 5, 6},
         {7, 0, 8}};
-    bool goalTest = false;
+
+    bool returnStatus = false;
+
     for (int i = 0; i < 3; i++)
     {
         for (int j = 0; j < 3; j++)
         {
             if (matrix[i][j] == goalState[i][j])
             {
-                goalTest = true;
+                returnStatus = true;
             }
             else
             {
+                cout << "isGoal... false\n";
                 return false;
             }
         }
     }
-    cout << "Reached the goal \n";
-    return goalTest;
+    cout << "isGoal... True\n";
+    return returnStatus;
+    /*
+    //https://stackoverflow.com/questions/25787366/c-compare-two-multidimensional-arrays
+    if (memcmp(matrix, goalState, sizeof(matrix)) == 0)
+    {
+        //Equal
+        cout << "isGoal: True \n";
+        return true;
+    }
+    else
+    {
+        cout << "isGoa... False \n";
+        return false;
+    }*/
 }
 
 // print path from root node to destination node
@@ -195,6 +211,7 @@ int col[] = {0, -1, 0, 1};
 //Each node can have max four children left,right,top,or bot as possible operators
 int checkOP(int x, int y)
 {
+    cout << "Checking possible operations..." << endl;
     //This function see's what child states are viable
     //from the current state. If possible returns true else false;
     if (x >= 0 && x < 3 && y >= 0 && y < 3)
@@ -203,6 +220,7 @@ int checkOP(int x, int y)
     }
     else
     {
+        cout << "Row x Col: " << x << "," << y << " Not a valid operation" << endl;
         return 0;
     }
 }
@@ -214,16 +232,34 @@ bool compareStates(const int puzzle[3][3], const int explored[3][3])
     //https://www.geeksforgeeks.org/stdmemcmp-in-cpp/
     bool returnStatus = false;
 
-    //https://stackoverflow.com/questions/25787366/c-compare-two-multidimensional-arrays
-    if (memcmp(puzzle, explored, sizeof(puzzle)) == 0)
+    for (int i = 0; i < 3; i++)
     {
-        //Equal
-        return true;
+        for (int j = 0; j < 3; j++)
+        {
+            if (puzzle[i][j] == explored[i][j])
+            {
+                returnStatus = true;
+            }
+            else
+            {
+                return false;
+            }
+        }
     }
-    else
-    {
-        return false;
-    }
+    return returnStatus;
+    /*
+//https://stackoverflow.com/questions/25787366/c-compare-two-multidimensional-arrays
+if (memcmp(puzzle, explored, 3 * sizeof(puzzle)) == 0)
+{
+    //Equal
+    cout << "Both states are the same \n";
+    return true;
+}
+else
+{
+    cout << "Both states not the same \n";
+    return false;
+}*/
 }
 
 /**********
@@ -243,12 +279,33 @@ struct comp
     //Overide
     bool operator()(const Node *lhs, const Node *rhs) const
     {
-        //return (lhs->cost + lhs->depth) > (rhs->cost + rhs->depth);
+
         //in the frontier we expand the cheapest node(based on path cost), meaning cheapest node should be at the front.
         //https://www.geeksforgeeks.org/stl-priority-queue-for-structure-or-class/
         return (lhs->cost) > (rhs->cost);
     }
 };
+
+void inFrontier(int arr[3][3], priority_queue<Node *, vector<Node *>, comp> copy)
+{
+
+    while (!copy.empty())
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                if (arr[i][j] != copy.top()->matrix[i][j])
+                {
+                    return false;
+                }
+            }
+        }
+
+        copy.pop(); //Move to next value in frontier copy
+    }
+    cout << endl;
+}
 
 //Helpful guide
 ////http://www.cs.umsl.edu/~sanjiv/classes/cs5130/lectures/bb.pdf
@@ -258,6 +315,8 @@ void Problem(int init[3][3], int r, int c)
     //Node <- a node with State = Problem.Initial-State, Path-Cost =0
     Node *root = newNode(init, r, c, r, c, 0, NULL);
     root->cost = checkCost(init);
+    int maxQueue = 0;
+    int nodesExpanded = 0;
 
     //frontier <- a priority_queue ordered by Path-Cost, with Node as the only element.
     //We will have a priority queue of node pointers which will form the path from root to goal
@@ -273,8 +332,14 @@ void Problem(int init[3][3], int r, int c)
     //Uniform Cost continues even after goal found, checks lower cost path too
     while (!frontier.empty()) //if Empty?(frontier) then return failure
     {
+        if (frontier.size() > maxQueue)
+        {
+            maxQueue = frontier.size();
+        }
+        cout << "Entered the Frontier >>> \n";
         //Uniform Cost expands node with smalles cost first.
         Node *minCost = frontier.top();
+        //cout << "checking blank placement " << minCost->row << "," << minCost->column << endl;
 
         //Remove the node from the frontier
         frontier.pop();
@@ -282,48 +347,119 @@ void Problem(int init[3][3], int r, int c)
         //if problem Goal test(node.State) then return solution
         if (minCost->isGoal())
         {
+            cout << "\n -----Found Goal State-----\n";
+            cout << "* Max Queue Size is: " << maxQueue << endl;
+            cout << "* Total Nodes expanded is: " << nodesExpanded << endl;
             printPath(minCost); //FIX
+
+            return;
         }
 
         //Add node->State to explored
-        cout << "----------\n";
-        cout << "Adding repeated state to explored list and showing list: " << endl;
-        explored.push_back(minCost);
-        cout << "Pushed this new state to explored" << endl;
-        displayState(explored.back().matrix);
-        cout << "----------\n";
-
-        //No matter the size of the board it can at most generate 4 new states so we have a max of four children for a node
-        for (int i = 0; i < 4; i++)
+        //cout << "----------\n";
+        //cout << "Adding state to explored list and showing list: " << endl;
+        if (explored.empty)
         {
+            explored.push_back(*minCost);
+        }
+        else if (explored.front().cost < minCost->cost)
+        {
+            explored.push_back(*minCost);
+        }
+        else if (explored.front().cost > minCost->cost)
+        {
+            explored.push_front(minCost);
+        }
+
+        //cout << "Pushed this new state to explored" << endl;
+        //displayState(explored.back().matrix);
+        //cout << "----------\n";
+
+        int expanded = 0;
+
+        cout << "Expanding Node with 4 possible children\n";
+        //No matter the size of the board it can at most generate 4 new states so we have a max of four children for a node
+        for (int i = 0; i < 4; i++) //Expand the node and add them to the frontier
+        {
+
             //Go through each operator for 0 moveUp, moveDown, moveLeft, moveRight and check if save.
+            //cout << "Will Add row " << minCost->row << " with possible operation " << row[i] << endl;
             if (checkOP(minCost->row + row[i], minCost->column + col[i]))
             {
-                //Valid state found create a new node with this new state
+                if (i == 0)
+                {
+                    cout << "New State Expanded by Operator Move Down\n";
+                }
+                else if (i == 1)
+                {
+                    cout << "New State Expanded by Operator Move Left\n";
+                }
+                else if (i == 2)
+                {
+                    cout << "New State Expanded by Operator Move Up\n";
+                }
+                else if (i == 3)
+                {
+                    cout << "New State Expanded by Operator Move Right\n";
+                }
+
+                //Because we know this operation is valid we will create the node,
+                //see if it's already in explored or frontier if already in explored or frontier forget this node and move on to next node,
+                //or see if it's already in the frontier with a higher cost so we can replace with this node
                 Node *child = newNode(minCost->matrix, minCost->row, minCost->column, minCost->row + row[i], minCost->column + col[i], minCost->depth + 1, minCost);
                 child->cost = checkCost(child->matrix);
+                cout << "Node created with cost : " << child->cost << endl;
+                //displayState(child->matrix);
+                //cout << "----------\n";
+                //cout << "This is the cost >>>" << checkCost(child->matrix) << endl;
 
-                bool notInExplored = false;
-                bool notInFrontier = false;
+                //Here we check If child.state not in explored or frontier then add to frontier so we can expand it later
+                cout << "Starting Comparin between new state and explored list--------\n";
+                bool inExplored = false;
+                bool inFrontier = false;
 
-                //If child.state not in explored or frontier then
-                for (auto v : explored)
+                printFrontier(explored);
+                for (auto v : explored) //Check if child is in entire explored list
                 {
-                    if (compareStates(child->matrix, v.matrix) != 0) //See if current child is in explored list. If returns 0 they are equal and in explored
+                    cout << "Explored list doesn't need to be organized from lest to greatest \n";
+                    cout << "Comparing Child Cost " << child->cost << " to explored list node cost is: " << v.cost << endl;
+
+                    /*
+                    cout << "Comparing current state with other in explored -----------\n\n";
+                    displayState(child->matrix);
+                    displayState(v.matrix);
+                    cout << "Comparing current state with other in explored -----------\n\n";
+                    */
+                    if (compareStates(child->matrix, v.matrix) == true)
                     {
-                        notInExplored = true;
-                        if (compareStates(child->matrix, frontier.top()->matrix) != 0) //if returns 0 it's in frontier
-                        {
-                            //frontier <- insert(child,frontier)
-                            notInFrontier = true;
-                            frontier.push(child);
-                        }
+                        cout << "inExplored... True";
+                        inExplored = true;
+                        break;
                     }
                 }
-                if (notInFrontier == false)
-                { //else if child.STATE is in frontier with higher PATH-COST then
+
+                if (inExplored == false)
+                {
+                    if (inFrontier(child->matrix, frontier) == false) //if returns 0 it's in frontier
+                    {
+                        cout << "In Frontier?.... False\n";
+                        cout << "Added to frontier... True\n";
+                        cout << "Added State with Cost " << child->cost << " to frontier\n";
+                        frontier.push(child);
+                        expanded++;
+                        if (expanded == 1)
+                        {
+                            nodesExpanded++;
+                        }
+                        break; //Don't need to continue search
+                    }
+                }
+                else if (compareStates(child->matrix, frontier.top()->matrix) == true) //But the costs are the same if same state.
+                {                                                                      //else if child.STATE is in frontier with higher PATH-COST then
+                    cout << "child is in frontier, check if better if this child has better cost\n";
                     if (child->cost < frontier.top()->cost)
                     {
+                        cout << "Better Cost.... True\n";
                         frontier.pop();
                         frontier.push(child);
                     }
@@ -388,6 +524,7 @@ int main()
 {
     int option = 0;
     int count = 0;
+    int x, y = 0;
     while (option != 1 && option != 2)
     {
         cout << "Welcome to Cristian's creye025 8 puzzle solver\n";
@@ -425,7 +562,7 @@ int main()
     {
 
         int val = 0;
-        int x, y = 0;
+        x, y = 0;
         for (int i = 0; i < 3; i++)
         {
             for (int j = 0; j < 3; j++)
@@ -437,22 +574,34 @@ int main()
                 {
                     x = i;
                     y = j;
+                    cout << "Placed blank in position " << x << "," << y << endl;
                 }
                 val = 0;
             }
         }
-        int cost = checkCost(puzzle);
 
         //This is the initial root node constructed
         //puzzle is initial state, x,y is 0 position, second pair is where to move new nodes
-        Node *root = newNode(puzzle, x, y, x, y, 0, NULL);
-        cout << checkCost(puzzle) << " This is the cost\n";
+        //Node *root = newNode(puzzle, x, y, x, y, 0, NULL);
+        //cout << "checking blank placement " << root->row << "," << root->column << endl;
     }
+    /*
+    cout << "EXAMPLE" << endl;
+    int arr[3][3] = {{1, 2, 3}, {4, 5, 6}, {7, 0, 8}};
+    int arrg[3][3] = {{1, 2, 3}, {4, 0, 6}, {7, 5, 8}};
+    if (compareStates(arr, arrg))
+    {
+        cout << "SAME\n";
+    }
+    else
+    {
+        cout << "NOT SAME\n";
+    }*/
 
     displayState(puzzle); //Need to send the arrays address https://stackoverflow.com/questions/8767166/passing-a-2d-array-to-a-c-function
-
+    cout << "This is the cost >>>" << checkCost(puzzle) << endl;
     //Should return solution which is path to goal state.
-    Problem(puzzle, 3, 3);
+    Problem(puzzle, x, y);
 
     /*
     //Reset for next options
