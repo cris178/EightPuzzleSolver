@@ -9,7 +9,7 @@ The program is now complete. This Eight Puzzle solver is written in C++. While I
 
 Since it's a simple C++ program you should be able to compile it with your prefferred compiler. I used G++ using Linux for Windows and Visual Studio code. 
 
-![VSCode](https://imgur.com/gallery/8cW3qC8)
+![VSCode](https://i.imgur.com/HOnckBk.png)
 
 
 * Console Command
